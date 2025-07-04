@@ -1,0 +1,91 @@
+#include <iostream>
+#include <thread>
+#include <vector>
+#include <mutex>
+#include <chrono>
+#include <cstdlib>
+#include <ctime>
+#include <windows.h>
+
+
+using namespace std;
+
+mutex coutMutex;
+
+const int AREA_WIDTH = 100;
+const int AREA_HEIGHT = 30;
+const int N = 3; // інтервал зміни напрямку
+const int V = 1; // швидкість (кроків за секунду)
+const int SIMULATION_TIME = 30; // секунд
+
+// Структура позиції
+struct Position {
+    int x;
+    int y;
+};
+
+// Функція для обмеження координат у межах області
+void clamp(Position& pos) {
+    if (pos.x < 0) pos.x = 0;
+    if (pos.x >= AREA_WIDTH) pos.x = AREA_WIDTH - 1;
+    if (pos.y < 0) pos.y = 0;
+    if (pos.y >= AREA_HEIGHT) pos.y = AREA_HEIGHT - 1;
+}
+
+// Потік для звичайного кролика
+void normalRabbit(int id) {
+    Position pos = { rand() % AREA_WIDTH, rand() % AREA_HEIGHT };
+    int dx = (rand() % 3) - 1;
+    int dy = (rand() % 3) - 1;
+
+    for (int t = 0; t < SIMULATION_TIME; ++t) {
+        // Рух
+        pos.x += dx * V;
+        pos.y += dy * V;
+        clamp(pos);
+
+        // Вивід позиції
+        {
+            lock_guard<mutex> lock(coutMutex);
+            cout << "[Звичайний кролик " << id << "] позиція: (" << pos.x << ", " << pos.y << ")" << endl;
+        }
+
+        // Зміна напрямку кожні N секунд
+        if ((t + 1) % N == 0) {
+            dx = (rand() % 3) - 1;
+            dy = (rand() % 3) - 1;
+        }
+
+        this_thread::sleep_for(chrono::seconds(1));
+    }
+}
+
+// Потік для кролика-альбіноса
+void albinoRabbit(int id) {
+    Position pos = { 0, rand() % AREA_HEIGHT };
+    int dx = 1;
+
+    for (int t = 0; t < SIMULATION_TIME; ++t) {
+        // Рух по осі X
+        pos.x += dx * V;
+        if (pos.x <= 0 || pos.x >= AREA_WIDTH - 1) {
+            dx *= -1; // розворот на краях
+        }
+
+        // Вивід позиції
+        {
+            lock_guard<mutex> lock(coutMutex);
+            cout << "[Альбінос " << id << "] позиція: (" << pos.x << ", " << pos.y << ")" << endl;
+        }
+
+        this_thread::sleep_for(chrono::seconds(1));
+    }
+}
+
+// Головна функція
+int main() {
+    SetConsoleOutputCP(65001); // Установити UTF-8
+
+    srand(time(0));
+
+    const int normalCount = 3;
