@@ -1,0 +1,126 @@
+/ Main.java
+public class Main {
+    public static void main(String[] args) {
+        // 1) Створимо меню за допомогою Composite
+        CompositeMenu mainMenu = new CompositeMenu("Main Menu");
+        LeafItem coffeeItem = new LeafItem("Coffee");
+        LeafItem teaItem    = new LeafItem("Tea");
+        mainMenu.add(coffeeItem);
+        mainMenu.add(teaItem);
+
+        CompositeMenu desserts = new CompositeMenu("Desserts");
+        desserts.add(new LeafItem("Cake"));
+        desserts.add(new LeafItem("Cookie"));
+        mainMenu.add(desserts);
+
+        System.out.println("=== Меню ===");
+        mainMenu.print("");
+
+        // 2) Factory Method: створюємо напої
+        DrinkFactory factory = new BeverageFactory();
+        Drink d1 = factory.createDrink("coffee");
+        Drink d2 = factory.createDrink("tea");
+        System.out.println("\nЗамовлення напоїв:");
+        d1.prepare();
+        d2.prepare();
+
+        // 3) State: керуємо статусом замовлення
+        Order order = new Order();
+        order.nextState(); // Paid
+        order.nextState(); // Delivered
+        order.nextState(); // Already delivered
+    }
+}
+
+/* ==================== Composite ==================== */
+interface MenuComponent {
+    void print(String prefix);
+}
+
+class LeafItem implements MenuComponent {
+    private String name;
+    LeafItem(String name) { this.name = name; }
+    public void print(String prefix) {
+        System.out.println(prefix + "- " + name);
+    }
+}
+
+class CompositeMenu implements MenuComponent {
+    private String name;
+    private java.util.List<MenuComponent> children = new java.util.ArrayList<>();
+    CompositeMenu(String name) { this.name = name; }
+    public void add(MenuComponent c) { children.add(c); }
+    public void print(String prefix) {
+        System.out.println(prefix + "+ " + name);
+        for (MenuComponent c : children) {
+            c.print(prefix + "  ");
+        }
+    }
+}
+
+/* ==================== Factory Method ==================== */
+abstract class DrinkFactory {
+    public abstract Drink createDrink(String type);
+}
+
+class BeverageFactory extends DrinkFactory {
+    public Drink createDrink(String type) {
+        switch(type.toLowerCase()) {
+            case "coffee": return new Coffee();
+            case "tea":    return new Tea();
+            default:       throw new IllegalArgumentException("Unknown drink: " + type);
+        }
+    }
+}
+
+interface Drink {
+    void prepare();
+}
+
+class Coffee implements Drink {
+    public void prepare() {
+        System.out.println("Preparing coffee: grinding beans, brewing, pouring...");
+    }
+}
+
+class Tea implements Drink {
+    public void prepare() {
+        System.out.println("Preparing tea: boiling water, steeping tea, pouring...");
+    }
+}
+
+/* ==================== State ==================== */
+interface OrderState {
+    void next(Order ctx);
+    String status();
+}
+
+class NewState implements OrderState {
+    public void next(Order ctx) {
+        ctx.setState(new PaidState());
+    }
+    public String status() { return "New"; }
+}
+
+class PaidState implements OrderState {
+    public void next(Order ctx) {
+        ctx.setState(new DeliveredState());
+    }
+    public String status() { return "Paid"; }
+}
+
+class DeliveredState implements OrderState {
+    public void next(Order ctx) {
+        System.out.println("Order is already delivered.");
+    }
+    public String status() { return "Delivered"; }
+}
+
+class Order {
+    private OrderState state = new NewState();
+    public void setState(OrderState s) { state = s; }
+    public void nextState() {
+        System.out.println("Current status: " + state.status());
+        state.next(this);
+    }
+}
